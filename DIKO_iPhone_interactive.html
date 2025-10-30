@@ -1,0 +1,145 @@
+<!doctype html>
+<html lang="kk">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>DIKO — Интерактивті (iPhone)</title>
+<style>
+:root{--bg:#ffffff;--card:#f8fbff;--accent:#0b63d6;--muted:#666;--ok:#16a34a;--bad:#ef4444}
+body{font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Arial; background:var(--bg); margin:0; padding:12px; color:#111}
+.container{max-width:760px;margin:0 auto}
+.header{display:flex;justify-content:space-between;align-items:center;gap:12px}
+h1{font-size:20px;margin:8px 0}
+.small{color:var(--muted);font-size:13px}
+.card{background:var(--card);padding:14px;border-radius:12px;box-shadow:0 6px 18px rgba(10,20,40,.04);margin-top:12px}
+.qnum{color:var(--muted);font-size:13px;margin-bottom:6px}
+.qtext{font-weight:700;margin-bottom:10px;font-size:18px}
+.choices{display:flex;flex-direction:column;gap:10px}
+.choice{background:#fff;border:1px solid #e6eefc;padding:14px;border-radius:12px;display:flex;align-items:center;gap:12px;cursor:pointer;font-size:17px}
+.choice input{appearance:none;width:22px;height:22px;border-radius:999px;border:2px solid #cbd5e1;display:inline-block}
+.choice.selected{background:rgba(11,99,214,0.06);border-color:rgba(11,99,214,0.18)}
+.feedback{margin-top:10px;font-weight:700}
+.controls{display:flex;gap:10px;margin-top:14px;flex-wrap:wrap}
+.btn{flex:1;padding:12px;border-radius:12px;border:0;background:var(--accent);color:#fff;font-weight:700;font-size:16px;cursor:pointer}
+.btn.secondary{background:transparent;color:var(--accent);border:1px solid rgba(11,99,214,0.12)}
+.summary{padding:14px;background:#fff;border-radius:12px;margin-top:12px}
+@media (max-width:420px){
+  .qtext{font-size:16px}
+  .choice{padding:12px;font-size:15px}
+  .btn{padding:12px;font-size:15px}
+}
+</style>
+</head>
+<body>
+<div class="container">
+  <div class="header">
+    <div>
+      <h1>DIKO — Интерактивті тест</h1>
+      <div class="small">Барлығы: <span id="totalCount">3</span> сұрақ • Safari-де (Open in Safari) ашыңыз</div>
+    </div>
+    <div class="small">Жауап: бір дұрыс</div>
+  </div>
+
+  <div id="card" class="card" role="main"></div>
+
+  <div class="controls">
+    <button id="prevBtn" class="btn secondary">◀ Бұрынғы</button>
+    <button id="nextBtn" class="btn secondary">Келесі ▶</button>
+    <button id="finishBtn" class="btn">Тестті аяқтау</button>
+  </div>
+
+  <div id="summary" class="summary" style="display:none"></div>
+</div>
+
+<script>
+const questions = [{"q": "Суппозиторийлер - қайсысы дұрыс?", "choices": ["бөлме температурасыда қатты, дене температурасыда балқитын қуыстарға енгiзуге арналған мөлшерге бөлiнген жұмсақ дәрiлiк түр", "дене температурасыда жұмсарып, терiге жабысу қасиетi бар жұқа қабатты майысқақ масса", "сыртқа қолданылатын, консистенцисы тұтқыр жұмсақ дәрiлiк түр", "құрамында 25%-65% ұнтақ тәрiздi заттары бар жағылмаладың бiр түрі", "дәрiлк және қосымша заттарды қант түйiршiктерiнде бiрнеше қайталап қабаттау жолымен алынатын, iшке қолдануға арналған мөлшерленген қатты дәрiлiк түр"], "correct": [0]}, {"q": "Жағылма дегеніміз қандай?", "choices": ["бөлме температурасыда қатты, дене температурасыда балқитын қуыстарға енгiзуге арналған мөлшерге бөлiнген жұмсақ дәрiлiк түр", "дене температурасыда жұмсарып, терiге жабысу қасиетi бар жұқа қабатты майысқақ масса", "сыртқа қолданылатын, консистенциясы тұтқыр жұмсақ дәрiлiк түр", "құрамында 25%-65% ұнтақ тәрiздi заттары бар жағылмалардың бiр түрі", "дәрiлкзат пен қосымша заттарды нығыздау тәсiлiмен алынатын, iшке қолдануға арналған мөлшерге бөлiнген қатты дәрiлiк түр"], "correct": [2]}, {"q": "Висмуттың негiздiк нитраты, қорғасын ацетаты, ашутас, мырыш сульфаты, күмiс нитратына қандай бейорганикалық дәрiлер жатады?", "choices": ["бырыстырғыш дәрiлер", "сiңiргiш дәрiлер", "тiтiркендiргiш дәрiлер", "тырыстырғыш дәрiлер", "ұйықтататын дәрiлер"], "correct": [0]}]
+;
+let idx = 0;
+let answers = Array(questions.length).fill(null);
+
+const card = document.getElementById('card');
+const prevBtn = document.getElementById('prevBtn');
+const nextBtn = document.getElementById('nextBtn');
+const finishBtn = document.getElementById('finishBtn');
+const summary = document.getElementById('summary');
+
+function renderQuestion(i){
+  const q = questions[i];
+  card.innerHTML = '';
+  const qnum = document.createElement('div');
+  qnum.className = 'qnum';
+  qnum.textContent = 'Сұрақ ' + (i+1) + ' / ' + questions.length;
+  const qtext = document.createElement('div');
+  qtext.className = 'qtext';
+  qtext.textContent = q.q;
+  card.appendChild(qnum);
+  card.appendChild(qtext);
+  const choices = document.createElement('div');
+  choices.className = 'choices';
+  q.choices.forEach((c, ci)=>{
+    const lab = document.createElement('div');
+    lab.className = 'choice';
+    lab.tabIndex = 0;
+    lab.dataset.idx = ci;
+    const inp = document.createElement('input'); inp.type='radio'; inp.name='ch'; inp.value=ci;
+    const span = document.createElement('div'); span.textContent = c;
+    lab.appendChild(inp); lab.appendChild(span);
+    if(answers[i] === ci){ lab.classList.add('selected'); inp.checked = true; }
+    lab.addEventListener('click', ()=>{
+      Array.from(choices.children).forEach(ch=>ch.classList.remove('selected'));
+      lab.classList.add('selected');
+      answers[i] = ci;
+      showFeedback(i, ci);
+    });
+    choices.appendChild(lab);
+  });
+  card.appendChild(choices);
+  const fb = document.createElement('div'); fb.id = 'fb'; fb.className='feedback'; card.appendChild(fb);
+  if(answers[i] !== null) showFeedback(i, answers[i]);
+  prevBtn.disabled = i === 0;
+  nextBtn.disabled = i === questions.length -1;
+}
+
+function showFeedback(qIndex, chosenIdx){
+  const fb = document.getElementById('fb');
+  const correctIdx = questions[qIndex].correct[0];
+  if(chosenIdx === correctIdx){
+    fb.innerHTML = '✅ Дұрыс';
+    fb.style.color = getComputedStyle(document.documentElement).getPropertyValue('--ok');
+  } else {
+    fb.innerHTML = '❌ Қате — Дұрыс: ' + questions[qIndex].choices[correctIdx];
+    fb.style.color = getComputedStyle(document.documentElement).getPropertyValue('--bad');
+  }
+}
+
+prevBtn.addEventListener('click', ()=>{ if(idx>0){ idx--; renderQuestion(idx); } });
+nextBtn.addEventListener('click', ()=>{ if(idx<questions.length-1){ idx++; renderQuestion(idx); } });
+finishBtn.addEventListener('click', ()=>{
+  let correct = 0, answered=0;
+  for(let i=0;i<questions.length;i++){
+    if(answers[i] !== null) answered++;
+    if(answers[i] === questions[i].correct[0]) correct++;
+  }
+  const pct = Math.round((correct/questions.length)*100);
+  summary.style.display = 'block';
+  summary.innerHTML = `<div style="font-weight:800;font-size:18px">${correct} / ${questions.length} — (${pct}%)</div>
+    <div class="small" style="margin-top:8px">Жауап берілді: ${answered} сұрақ</div>
+    <div style="margin-top:10px"><button id="download" class="btn">Нәтижені CSV ретінде жүктеу</button></div>
+    <div style="margin-top:10px" class="small">Ескерту: егер WhatsApp ішінде ашсаңыз — "Open in Safari" арқылы ашып, интерактивті пайдаланыңыз.</div>`;
+  document.getElementById('download').addEventListener('click', ()=>{
+    const rows = [['№','Сұрақ','Сенің жауабың','Дұрыс жауап']];
+    for(let i=0;i<questions.length;i++){
+      rows.push([i+1, questions[i].q, answers[i]===null? '': questions[i].choices[answers[i]], questions[i].choices[questions[i].correct[0]]]);
+    }
+    const csv = rows.map(r=> r.map(c=> '"'+String(c).replace(/"/g,'""')+'"').join(',')).join('\n');
+    const blob = new Blob([csv], {type:'text/csv'});
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a'); a.href = url; a.download = 'DIKO_results.csv'; document.body.appendChild(a); a.click();
+    setTimeout(()=>{ URL.revokeObjectURL(url); a.remove(); },3000);
+  });
+});
+
+renderQuestion(idx);
+</script>
+</body>
+</html>
